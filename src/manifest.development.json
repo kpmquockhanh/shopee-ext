@@ -1,0 +1,25 @@
+{
+    "manifest_version": 3,
+    "name": "shopee-ext",
+    "description": "chrome extension",
+    "permissions": [
+        "tabs",
+        "identity",
+        "identity.email"
+    ],
+    "version": "0.0.1",
+    "background": {
+        "service_worker": "/background.js"
+    },
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://shopeefood.vn/*"],
+            "js": [
+                "/content.js"
+            ]
+        }
+    ]
+}
