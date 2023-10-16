@@ -3,6 +3,7 @@ import App from '../view/popup.vue'
 import Antv from 'antv'
 import 'antv/dist/antv.css'
 import 'antd-css-utilities/utility.min.css'
+import '../assets/css/app.scss'
 
 Vue.use(Antv)
 Vue.config.productionTip = false

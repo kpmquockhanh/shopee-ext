@@ -1,25 +1,50 @@
-console.log('Active script')
+console.log('Shopee Food helper starting....')
 
-const DOMAIN = 'http://127.0.0.1:3000/api/v1'
-// const DOMAIN = 'https://5a9b-14-248-83-240.ap.ngrok.io/api/v1'
-const getHeader = function() {
+const DOMAIN = 'https://shop.kpmquockhanh.site/api/v1'
+// const DOMAIN = 'http://localhost:3000/api/v1'
+const getHeader = function () {
+  const {isShare} = getToken()
   return {
     "Content-Type": "application/json",
-    "x-kpm-token": localStorage.getItem(`kpm_auth_${shopInfo.restaurant_id}`)
+    "x-kpm-token": getAuthKey(),
+    "x-kpm-shared": isShare,
   }
 }
+const getAuthKey = function () {
+  return localStorage.getItem(`kpm_auth_${shopInfo.restaurant_id}`)
+}
+
 let shopeeInfo = {}
+
 async function getUserInfo() {
-  return await chrome.runtime.sendMessage({type: "get-info"});
+  return chrome.runtime.sendMessage({type: "get-info"});
 }
 
 chrome.runtime.onMessage.addListener(
-  function(request, sender, sendResponse) {
-    console.log(sender.tab ?
-      "from a content script:" + sender.tab.url :
-      "from the extension");
-    sendResponse({farewell: "goodbye"});
-    return true;
+  async function (request, sender, sendResponse) {
+    switch (request.type) {
+      case 'get-shop':
+        sendResponse({
+          restaurant_id: shopInfo.restaurant_id,
+          auth_key: getAuthKey(),
+          cart: cartData,
+        });
+        break
+      case 'delete-cart':
+        // eslint-disable-next-line no-case-declarations
+        const resp = await fetch(`${DOMAIN}/cart/${getToken().token}/delete`, {
+          method: "delete",
+          headers: getHeader(),
+        })
+
+        // eslint-disable-next-line no-case-declarations
+        const response = await resp.json()
+        sendResponse({status: !!response.status})
+        if (response.status) {
+          window.location.reload()
+        }
+        break
+    }
   }
 );
 
@@ -31,9 +56,19 @@ async function getShopInfo() {
 
 getShopeeToken()
 
+function showError(error) {
+  const qrCode = document.querySelector('#QRcode')
+  const newDom = document.createElement('div')
+  newDom.innerHTML = `<div class="alert alert-danger" role="alert">${error}</div>`
+  qrCode.prepend(newDom)
+}
+
 getUserInfo().then(async function (info) {
   if (!info.email) {
-    alert('Please login to use this extension')
+    waitForElm('#QRcode').then(async () => {
+      showError('Please login google account to use this extension')
+    })
+    return
   }
   await getShopInfo()
   if (!shopInfo || !shopInfo.restaurant_id) {
@@ -45,16 +80,24 @@ getUserInfo().then(async function (info) {
     await fetchCart(info)
   })
 
-  waitForElm('.btn-adding').then(() => {
-    document.querySelectorAll('.btn-adding').forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault()
-        await addToCart(e, info)
-        await fetchCart(info)
+  waitForElm('body .btn-adding').then(() => {
+    setInterval(() => {
+      document.querySelectorAll('body .btn-adding').forEach((btn) => {
+        console.log('set add to cart', btn.closest('.row').parentElement.parentElement.querySelector('.item-restaurant-name'))
+        btn.addEventListener('click', (e) => {
+          bindAddBtn(e, info)
+        })
       })
-    })
+    }, 1000)
   });
 })
+
+async function bindAddBtn(e, info) {
+  console.log('click add to cart', e.target)
+  e.preventDefault()
+  await addToCart(e, info)
+  await fetchCart(info)
+}
 
 let shopInfo = {}
 let categories = []
@@ -69,6 +112,7 @@ async function fetchCategories() {
 
 async function addToCart(e, info) {
   const domName = e.target.closest('.row').parentElement.parentElement.querySelector('.item-restaurant-name')
+  console.log('domName', domName)
   if (!domName) {
     alert('Error: No product name found')
     return
@@ -104,7 +148,8 @@ async function addToCart(e, info) {
     requestProduct.quantity = carItems.product.quantity + 1
   }
 
-  return await fetch(`${DOMAIN}/cart/${getToken()}/update`, {
+  const {token} = getToken()
+  return await fetch(`${DOMAIN}/cart/${token}/update`, {
     method: 'POST',
     headers: getHeader(),
     body: JSON.stringify({
@@ -122,6 +167,20 @@ async function fetchCart({email}) {
   }
   fillCart()
   bindEventCart(email)
+
+  updateParams('fetchCart')
+}
+
+function updateParams(target) {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('group');
+  url.searchParams.set('group', getToken(target === 'newItem').token);
+
+  const nextURL = url.toString()
+  const nextState = { additionalInformation: 'Update token by extension' };
+
+  window.history.replaceState(nextState, '', nextURL);
+
 }
 
 function bindEventCart(email) {
@@ -130,10 +189,11 @@ function bindEventCart(email) {
     document.querySelector('#sync-btn').addEventListener('click', async () => {
       const parsedShopeeInfo = JSON.parse(shopeeInfo)
       if (!parsedShopeeInfo || !parsedShopeeInfo.token) {
-        alert('Please login shopee to sync')
+        showError('Please login shopee to sync')
         return
       }
-      const respSync = await fetch(`${DOMAIN}/cart/${getToken()}/sync`, {
+      const {token} = getToken()
+      const respSync = await fetch(`${DOMAIN}/cart/${token}/sync`, {
         method: "post",
         headers: getHeader(),
         body: JSON.stringify({
@@ -151,14 +211,19 @@ function bindEventCart(email) {
     })
   }
   document.querySelector('#share-btn').addEventListener('click', async () => {
-    await navigator.clipboard.writeText(`${window.location.href}?group=${getToken()}`);
+    const {token} = getToken()
+    const url = new URL(window.location.href);
+    url.searchParams.delete('group');
+    url.searchParams.set('group', token);
+    await navigator.clipboard.writeText(url.toString());
     alert('Copied to clipboard');
   })
 
   document.querySelectorAll('.remove-cart-item-btn').forEach((ele) => {
     ele.addEventListener('click', async (e) => {
 
-      await fetch(`${DOMAIN}/cart/${getToken()}/remove`, {
+      const {token} = getToken()
+      await fetch(`${DOMAIN}/cart/${token}/remove`, {
         method: "delete",
         headers: getHeader(),
         body: JSON.stringify({
@@ -176,7 +241,7 @@ function fillCart() {
   qrCode.style.borderRadius = '4px'
   qrCode.style.paddingTop = '10px'
   let subTotal = 0
-  let items = `<div>Created by: <strong>${cartData.createdBy}${cartData.isOwner ? ' (owner)': ''}</strong></div>`
+  let items = `<div>Created by: <strong>${cartData.createdBy}${cartData.isOwner ? ' (owner)' : ''}</strong></div>`
   if (cartData.cartItems) {
     cartData.cartItems.forEach((item) => {
       let removeCartBtn = ''
@@ -217,12 +282,14 @@ function fillCart() {
   document.querySelectorAll('.cart-items').forEach((ele) => {
     ele.remove()
   })
-
   let syncButton = ''
   if (!cartData.isSync) {
     syncButton = `<div id="sync-btn" style="flex: 1; padding: 16px 0; background-color: #333; cursor:pointer;border-radius: 6px">Sync to shopee cart</div>`
   } else {
     syncButton = `<div style="flex: 1;">Sync done, please scan QR code to review and checkout</div>`
+  }
+  if (!cartData.isOwner) {
+    syncButton = ''
   }
   const newDom = document.createElement('div')
   newDom.classList.add('cart-items')
@@ -235,7 +302,11 @@ function fillCart() {
     </div>
     <div style="display: flex;margin: 8px 12px 16px 12px;gap:8px;align-items: center">
         ${syncButton}
-        <div id="share-btn" style="padding: 16px 8px; background-color: #555; cursor:pointer;border-radius: 6px">Share</div>
+        <div 
+          id="share-btn"
+           style="padding: 16px 8px; background-color: #555; cursor:pointer;border-radius: 6px;${syncButton ? '' : 'flex-grow: 1'}">
+           Share
+         </div>
     </div>
     `;
   qrCode.style.backgroundImage = 'unset'
@@ -243,21 +314,26 @@ function fillCart() {
   qrCode.prepend(newDom)
 }
 
-function getToken() {
+function getToken(isNew = false) {
   const url = new URL(window.location.href);
   const searchParams = url.searchParams;
 
-  console.log('test', searchParams.get('group'));
-  const shareToken = searchParams.get('group');
-  if (shareToken) {
-    localStorage.setItem(`kpm_token_${shopInfo.restaurant_id}`, shareToken)
-    return shareToken;
+  const sharedToken = searchParams.get('group');
+  if (sharedToken && !isNew) {
+    return {
+      token: sharedToken,
+      isShare: true,
+    };
   }
-  return localStorage.getItem(`kpm_token_${shopInfo.restaurant_id}`) || 'new'
+
+  return {
+    token: localStorage.getItem(`kpm_token_${shopInfo.restaurant_id}`) || 'new',
+    isShare: false,
+  };
 }
 
 async function getOrInitCart(owner) {
-  const token = getToken()
+  const {token} = getToken()
   let resp = await fetch(`${DOMAIN}/cart/${token}?hash=${owner}&resId=${shopInfo.restaurant_id}`, {
     headers: getHeader(),
   })
@@ -269,6 +345,7 @@ async function getOrInitCart(owner) {
   if (resp.data?.isNew) {
     localStorage.setItem(`kpm_token_${shopInfo.restaurant_id}`, resp.data.id)
     localStorage.setItem(`kpm_auth_${shopInfo.restaurant_id}`, resp.data.authKey)
+    updateParams('newItem')
   }
   return resp.data
 }
@@ -318,5 +395,5 @@ function formatCurrency(price) {
   if (!price) {
     return 0
   }
-  return price.toLocaleString('it-IT', {style : 'currency', currency : 'VND'});
+  return price.toLocaleString('it-IT', {style: 'currency', currency: 'VND'});
 }

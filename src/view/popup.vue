@@ -1,27 +1,41 @@
 <template>
-    <div class="main_app ma-10" style="width: 250px">
+    <div class="main_app">
         <div class="d-flex align-center" style="gap: 4px">
-            <span style="flex-basis: 80px" class="justify-start">Email:</span>
+            <span class="justify-start label" style="flex-basis: 80px">Your Email:</span>
             <v-badge class="flex-grow-1">{{ email || 'N/A' }}</v-badge>
         </div>
         <div class="d-flex align-center my-3" style="gap: 4px">
-            <span style="flex-basis: 80px">Shop ID:</span>
+            <span class="label">Shop ID:</span>
             <v-badge class="flex-grow-1">{{ resId || 'N/A' }}</v-badge>
         </div>
         <div class="d-flex align-center" style="gap: 4px">
-            <span style="flex-basis: 80px">Auth key:</span>
-            <v-input v-model="authKey" class="flex-grow-1" allow-clear/>
+            <span class="label">Auth key:</span>
+            <v-badge class="flex-grow-1">{{ authKey || 'N/A' }}</v-badge>
         </div>
-        <div class="d-flex align-center mt-3" style="gap: 4px">
-            <span style="flex-basis: 80px" @click="onClearToken">Cart token</span>
-            <v-input v-model="cartToken" class="flex-grow-1"/>
+        <div class="mt-3" style="gap: 4px">
+            <span class="label">Cart info</span>
+            <div class="ml-3 mt-3 d-flex gap-8 flex-column">
+                <div>
+                    <span class="label">Token: </span>
+                    <v-badge class="flex-grow-1 ml-3">{{ cartToken || 'N/A' }}</v-badge>
+                </div>
+                <div>
+                    <span class="label">Owner: </span>
+                    <v-badge class="flex-grow-1 ml-3">{{ cartCreatedBy || 'N/A' }}
+                        <strong>{{ isOwner ? 'owned' : '' }}</strong></v-badge>
+                </div>
+                <div>
+                    <span class="label">SubTotal price: </span>
+                    <v-badge class="flex-grow-1 ml-3">{{ cartSubTotal || 'N/A' | formatCurrency }}</v-badge>
+                </div>
+            </div>
         </div>
-        <div class="d-flex flex-column mt-3">
-            <button type="button" class="ant-btn ant-btn-primary" @click="onClearToken">
-                <span>Clear cart</span>
+        <div class="d-flex mt-3 action-btn" style="gap: 8px">
+            <button v-if="isOwner" class="ant-btn ant-btn-danger" type="button" @click="onDeleteCart">
+                <span>Delete cart</span>
             </button>
 
-            <button type="button" class="ant-btn ant-btn-dashed mt-2" @click="onClearToken">
+            <button class="ant-btn ant-btn-dashed" type="button" @click="onDeleteCart">
                 <span>Reset data</span>
             </button>
         </div>
@@ -36,34 +50,72 @@ export default {
       email: '',
       resId: 0,
       authKey: '',
-      cartToken: ''
+      cart: {},
     }
+  },
+  computed: {
+    cartToken() {
+      return this.cart?.id
+    },
+    cartCreatedBy() {
+      return this.cart?.createdBy
+    },
+    cartSubTotal() {
+      return this.cart?.cartItems?.reduce((acc, item) => {
+        return acc + (item.product.price || 0) * (item.product.quantity || 1)
+      }, 0)
+    },
+    isOwner() {
+      return this.cart?.isOwner
+    },
   },
   methods: {
-    async onClearToken() {
-      console.log('onClearToken')
-      // const resp = await chrome.runtime.sendMessage({type: "clear-cart"});
-
+    async onDeleteCart() {
+      if (!this.resId) return
       const [tab] = await chrome.tabs.query({active: true});
-      console.log('tab', tab);
-      const response = await chrome.tabs.sendMessage(tab.id, {greeting: "hello"});
-      // do something with response here, not outside the function
-      console.log(response);
-      // console.log(resp)
+      if (!tab) return
+      await chrome.tabs.sendMessage(tab.id, {type: "delete-cart"});
+    },
+    async getTab() {
+      const [tab] = await chrome.tabs.query({active: true});
+      return tab
+    },
+  },
+  async created() {
+    const {email} = await chrome.runtime.sendMessage({type: "get-info"});
+    if (email) {
+      this.email = email
     }
+    const tab = await this.getTab();
+
+    await chrome.tabs.sendMessage(tab.id, {type: 'get-shop'}, (resp) => {
+      if (!resp) {
+        return
+      }
+      const {restaurant_id, auth_key, cart} = resp
+      if (restaurant_id) {
+        this.resId = restaurant_id
+      }
+      if (auth_key) {
+        this.authKey = auth_key
+      }
+
+      if (cart) {
+        this.cart = cart
+      }
+    });
   },
-  created() {
-    console.log('created')
-  },
+  filters: {
+    formatCurrency(price) {
+      if (price === 'N/A') {
+        return price
+      }
+      if (!price) {
+        return 0
+      }
+      return price.toLocaleString('it-IT', {style: 'currency', currency: 'VND'});
+    }
+  }
 }
 
 </script>
-
-<style>
-.main_app {
-    font-family: 'Avenir', Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    color: #2c3e50;
-}
-</style>

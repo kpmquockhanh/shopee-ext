@@ -1,0 +1,24 @@
+.main_app {
+    font-family: 'Avenir', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: #2c3e50;
+    //border: 1px solid #333;
+    padding: 16px;
+    min-width: 300px;
+    line-height: 20px;
+    .label {
+        flex-basis: 80px;
+        font-weight: bold;
+    }
+
+    .action-btn {
+        button {
+            flex-basis: 50%;
+            flex-grow: 1;
+        }
+    }
+    .gap-8 {
+        gap: 8px;
+    }
+}
