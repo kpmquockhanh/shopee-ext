@@ -1,8 +1,14 @@
 {
     "manifest_version": 3,
-    "name": "shopee-ext",
-    "description": "chrome extension",
-    "version": "0.0.1",
+    "name": "Shopee Food Helper",
+    "description": "The tool helps you to order food on shopee food",
+    "permissions": [
+        "tabs",
+        "identity",
+        "identity.email",
+        "activeTab"
+    ],
+    "version": "0.0.4",
     "background": {
         "service_worker": "/background.js"
     },
@@ -11,12 +17,14 @@
     },
     "content_scripts": [
         {
-            "matches": [
-                "<all_urls>"
-            ],
+            "matches": ["https://shopeefood.vn/*"],
             "js": [
                 "/content.js"
             ]
         }
-    ]
+    ],
+    "icons": {
+        "16": "logo16.png",
+        "128": "logo128.png"
+    }
 }

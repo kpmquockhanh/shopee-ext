@@ -1,45 +1,45 @@
 <template>
-    <div class="main_app">
-        <div class="d-flex align-center" style="gap: 4px">
-            <span class="justify-start label" style="flex-basis: 80px">Your Email:</span>
-            <v-badge class="flex-grow-1">{{ email || 'N/A' }}</v-badge>
-        </div>
-        <div class="d-flex align-center my-3" style="gap: 4px">
-            <span class="label">Shop ID:</span>
-            <v-badge class="flex-grow-1">{{ resId || 'N/A' }}</v-badge>
-        </div>
-        <div class="d-flex align-center" style="gap: 4px">
-            <span class="label">Auth key:</span>
-            <v-badge class="flex-grow-1">{{ authKey || 'N/A' }}</v-badge>
-        </div>
-        <div class="mt-3" style="gap: 4px">
-            <span class="label">Cart info</span>
-            <div class="ml-3 mt-3 d-flex gap-8 flex-column">
-                <div>
-                    <span class="label">Token: </span>
-                    <v-badge class="flex-grow-1 ml-3">{{ cartToken || 'N/A' }}</v-badge>
-                </div>
-                <div>
-                    <span class="label">Owner: </span>
-                    <v-badge class="flex-grow-1 ml-3">{{ cartCreatedBy || 'N/A' }}
-                        <strong>{{ isOwner ? 'owned' : '' }}</strong></v-badge>
-                </div>
-                <div>
-                    <span class="label">SubTotal price: </span>
-                    <v-badge class="flex-grow-1 ml-3">{{ cartSubTotal || 'N/A' | formatCurrency }}</v-badge>
-                </div>
-            </div>
-        </div>
-        <div class="d-flex mt-3 action-btn" style="gap: 8px">
-            <button v-if="isOwner" class="ant-btn ant-btn-danger" type="button" @click="onDeleteCart">
-                <span>Delete cart</span>
-            </button>
-
-            <button class="ant-btn ant-btn-dashed" type="button" @click="onDeleteCart">
-                <span>Reset data</span>
-            </button>
-        </div>
+  <div class="main_app bg-zinc-100">
+    <div class="flex items-center justify-between gap-4">
+      <span class="justify-start label">Your Email:</span>
+      <div class="flex-grow-1">{{ email || 'N/A' }}</div>
     </div>
+    <div class="flex items-center justify-between gap-4">
+      <span class="label">Shop ID:</span>
+      <div class="flex-grow-1">{{ resId || 'N/A' }}</div>
+    </div>
+    <div class="flex items-center justify-between gap-4">
+      <span class="label">Auth key:</span>
+      <div>{{ authKey || 'N/A' }}</div>
+    </div>
+    <div class="mt-3">
+      <span class="label">Cart info</span>
+      <div class="ml-3 flex flex-col mt-2">
+        <div>
+          <span class="label">Token: </span>
+          <span class="flex-grow ml-3">{{ cartToken || 'N/A' }}</span>
+        </div>
+        <div>
+          <span class="label">Owner: </span>
+          <span class="flex-grow ml-3">{{ cartCreatedBy || 'N/A' }}
+            <strong>{{ isOwner ? 'owned' : '' }}</strong></span>
+        </div>
+        <div>
+          <span class="label">SubTotal price: </span>
+          <span class="flex-grow ml-3">{{ cartSubTotal || 'N/A' | formatCurrency }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="flex mt-3 action-btn gap-4">
+      <button v-if="isOwner" class="bg-sky-500 hover:bg-sky-700 rounded-md p-2" @click="onDeleteCart">
+        <span>Delete cart</span>
+      </button>
+
+      <button class="bg-red-500 hover:bg-red-700 rounded-md p-2" @click="onDeleteCart">
+        <span>Reset data</span>
+      </button>
+    </div>
+  </div>
 </template>
 
 <script>

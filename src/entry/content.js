@@ -30,20 +30,19 @@ chrome.runtime.onMessage.addListener(
           cart: cartData,
         });
         break
-      case 'delete-cart':
-        // eslint-disable-next-line no-case-declarations
+      case 'delete-cart': {
         const resp = await fetch(`${DOMAIN}/cart/${getToken().token}/delete`, {
           method: "delete",
           headers: getHeader(),
         })
 
-        // eslint-disable-next-line no-case-declarations
         const response = await resp.json()
         sendResponse({status: !!response.status})
         if (response.status) {
           window.location.reload()
         }
         break
+      }
     }
   }
 );
